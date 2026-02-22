@@ -1,4 +1,4 @@
-# CPE-426 Hardware Security Final Porject - Snake Game
+# CPE-426 Hardware Security Final Project - Snake Game
 
 This repository contains a course project demonstrating a hardware trojan
 inserted into a custom RISC-V FPGA design for educational hardware security project.
