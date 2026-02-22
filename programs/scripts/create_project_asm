@@ -1,0 +1,10 @@
+#!/bin/bash
+if [ $# != 1 ] ; then
+	echo "Creates a new project directory with foundation files and an empty main function in assembly"
+	echo "Usage: create_project_asm DIR_NAME"
+	echo "Example to create a project named my_proj:"
+	echo "create_project_asm my_proj"
+	exit
+fi
+
+mkdir $1 && tar -zx -f $OTTER_TOOLS/empty_project_asm.tgz -C $1

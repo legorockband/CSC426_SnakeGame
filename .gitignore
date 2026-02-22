@@ -1,0 +1,19 @@
+# Build outputs
+build/
+programs/snake_game/build/
+
+# Toolchain
+programs/riscv_gnu_toolchain/
+
+# Compiler artifacts
+*.o
+*.elf
+*.bin
+*.dump
+*.hex
+
+# Vivado project
+Snake_Game_Trojan_Vivado/
+
+# vscode
+.vscode/

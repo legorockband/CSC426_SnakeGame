@@ -1,0 +1,10 @@
+#!/bin/bash
+if [ $# != 1 ] ; then
+	echo "Selects the serial port for programming the OTTER"
+	echo "Usage: set_com COM_NUMBER"
+	echo "Example to select COM4:"
+	echo "set_com 4"
+	exit
+fi
+
+ln -sf /dev/ttyS$1 $OTTER_TOOLS/programmer/fpga_dev
