@@ -50,7 +50,7 @@ Once your Vivado project is setup, you can proceed to simulate, synthesize, and 
 
 # How to Setup RISC-V ToolChain
 1. Setup script for project
-    - `source otter_tools/scripts/setup_env.sh`
+    - `source programs/scripts/setup_env.sh`
 2. Setup ports
     - `set_com 4`
 3. Run `make` to compiles project
