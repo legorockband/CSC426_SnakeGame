@@ -18,6 +18,9 @@ The trojan technique is demonstrated to study detection, mitigation, and secure 
 - [How to Setup Vivado Project](#how-to-setup-vivado-project)
 - [How to Setup RISC-V Toolchain](#how-to-setup-risc-v-toolchain)
 # Introduction
+This project is an implementation of a hardware trojan only on the Basys3 FPGA board. 
+
+It is best to run this project on WSL or Linux in order to run RISC-V toolchain. 
 
 ## Required Hardware and Software
 
@@ -46,3 +49,12 @@ Add all of the System Verilog, Verilog, and memory files
 Once your Vivado project is setup, you can proceed to simulate, synthesize, and generate bit stream. 
 
 # How to Setup RISC-V ToolChain
+1. Setup script for project
+    - `source otter_tools/scripts/setup_env.sh`
+2. Setup ports
+    - `set_com 4`
+3. Run `make` to compiles project
+4. The snake game should already be in the RTL .mem file. If not, copy and paste contents from programs/snake_game/build/mem.txt to the .mem file on the RTL project. Generated the bit stream again and load on to the board. 
+5. If you want create your own software projects run `create_project_asm myproj`
+    - Or a C project, run `create_project_c myproj`
+    - Be sure to change src/init.s to call _start instead of main for a C project
