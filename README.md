@@ -49,12 +49,17 @@ Add all of the System Verilog, Verilog, and memory files
 Once your Vivado project is setup, you can proceed to simulate, synthesize, and generate bit stream. 
 
 # How to Setup RISC-V ToolChain
-1. Setup script for project
-    - `source programs/scripts/setup_env.sh`
-2. Setup ports
-    - `set_com 4`
-3. Run `make` to compiles project
+1. Download dependecies
+    - `sudo apt update`
+    - `apt install -y libmpc3 libmpfr6 libgmp10 make`
+2. Setup script for project
+    - `cd programs`
+    - `source scripts/env.sh`
+2. Build the snake game
+    - `cd programs/snake_game`
+    - `make clean`
+    - `make`
 4. The snake game should already be in the RTL .mem file. If not, copy and paste contents from programs/snake_game/build/mem.txt to the .mem file on the RTL project. Generated the bit stream again and load on to the board. 
-5. If you want create your own software projects run `create_project_asm myproj`
+5. (Optional) If you want create your own software projects run (not necessary for this trojan) `create_project_asm myproj`
     - Or a C project, run `create_project_c myproj`
     - Be sure to change src/init.s to call _start instead of main for a C project
