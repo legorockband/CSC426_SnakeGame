@@ -2,8 +2,7 @@
 #define OUTPUTS_H
 
 #include <stdint.h>
-
-#define MMIO32(addr) (*(volatile uint32_t*)(addr))
+#include "mmio.h"
 
 #define LED_OUT    MMIO32(0x11000020u)
 #define SSEG_OUT   MMIO32(0x11000040u)
