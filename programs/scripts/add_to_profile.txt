@@ -1,9 +1,7 @@
+# repo root
+export OTTER_TOOLS="$HOME/Snake_Game_Trojan"
 
-# path to otter_tools
-export OTTER_TOOLS=$HOME/Snake_Game_Trojan/Snake_Game_Trojan.srcs/otter_tools
+# toolchain + programmer + scripts
+export PATH="$OTTER_TOOLS/programs/riscv_gnu_toolchain/bin:$OTTER_TOOLS/programmer/bin:$OTTER_TOOLS/scripts:$PATH"
 
-# add binary/script dirs to path
-PATH="$OTTER_TOOLS/riscv_gnu_toolchain/bin:$OTTER_TOOLS/programmer/bin:$OTTER_TOOLS/scripts:$PATH"
-
-# default file creation permission mask
 umask 022
