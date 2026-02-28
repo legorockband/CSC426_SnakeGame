@@ -27,6 +27,6 @@ uint8_t  read_btn_l(void);
 uint8_t  read_btn_r(void);
 uint8_t  read_btn_u(void);
 uint8_t  read_btn_d(void);
-uint8_t read_buttons(void);
+uint8_t  read_buttons(void);
 
 #endif

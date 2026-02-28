@@ -7,7 +7,11 @@
 /* Color constants */
 #define VGA_COLOR_BLUE   0x03u
 #define VGA_COLOR_RED    0xE0u
-#define VGA_COLOR_GREEN  0xFAu
+#define VGA_COLOR_GREEN  0x7Au
+
+/* VGA screen dimensions */
+#define VGA_WIDTH  80
+#define VGA_HEIGHT 60
 
 // Memory-mapped VGA constants
 #define VGA_ADDR      MMIO32(0x11000120u)

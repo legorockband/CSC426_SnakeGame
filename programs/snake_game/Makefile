@@ -70,7 +70,7 @@ endif
 
 # extract the binary data from data and text sections to get a binary image of memory
 $(BUILD)/mem.bin: $(BUILD)/$(PROJECT).elf
-	$(OBJCOPY) -O binary --only-section=.data* --only-section=.text* $< $@
+	$(OBJCOPY) -O binary --only-section=.text* --only-section=.rodata* --only-section=.data* $< $@
 
 # convert to an ASCII hex file for OTTER memory
 $(BUILD)/mem.txt: $(BUILD)/mem.bin

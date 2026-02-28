@@ -21,9 +21,8 @@ void vga_fill(uint32_t color) {
     /*
     fill screen with color 
     */
-
-    for (uint32_t y = 0; y < 64; y++) {
-        for (uint32_t x = 0; x < 128; x++) {
+    for (uint32_t y = 0; y < VGA_HEIGHT; y++) {
+        for (uint32_t x = 0; x < VGA_WIDTH; x++) {
             vga_draw_pixel(x, y, color);
         }
     }
