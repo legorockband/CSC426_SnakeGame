@@ -1,7 +1,0 @@
-# repo root
-export OTTER_TOOLS="$HOME/Snake_Game_Trojan"
-
-# toolchain + programmer + scripts
-export PATH="$OTTER_TOOLS/programs/riscv_gnu_toolchain/bin:$OTTER_TOOLS/programmer/bin:$OTTER_TOOLS/scripts:$PATH"
-
-umask 022

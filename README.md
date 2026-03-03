@@ -46,7 +46,7 @@ Once your Vivado project is setup, you can proceed to simulate, synthesize, and 
 # How to Setup RISC-V ToolChain
 
 After cloning the project on your Linux or WSL machine, follow the directions to setup the toolchai. 
-1. Install the otter toolchain from this google driver and put it in the root directory of this project:
+1. Install the otter toolchain from this google driver and **move it to your home directory**:
     https://drive.google.com/file/d/1yS3x0SlOr-eLZniw07J5MWeR3lJSSB8F/view?usp=sharing
 
     This includes the compiler required to run this project. 
