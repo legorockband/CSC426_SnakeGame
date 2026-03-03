@@ -1,8 +1,9 @@
-# scripts/env.sh
+#!/usr/bin/env bash
+# programs/scripts/env.sh
 
-# repo root = parent of this scripts/ dir
-export OTTER_TOOLS="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 
-export PATH="$OTTER_TOOLS/programs/riscv_gnu_toolchain/bin:$OTTER_TOOLS/programmer/bin:$OTTER_TOOLS/scripts:$PATH"
+export OTTER_TOOLS="$REPO_ROOT"
+export PATH="$REPO_ROOT/programs/riscv_gnu_toolchain/bin:$REPO_ROOT/programmer/bin:$REPO_ROOT/scripts:$PATH"
 
 umask 022
