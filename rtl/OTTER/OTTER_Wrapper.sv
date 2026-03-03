@@ -69,6 +69,9 @@ module OTTER_Wrapper(
  
    logic [15:0]  r_SSEG;
    
+   logic sBTNL, sBTNR, sBTNU, sBTND;
+   logic dbBTNL, dbBTNR, dbBTNU, dbBTND;
+   
    // Connect Signals ////////////////////////////////////////////////////////////
    assign s_interrupt = btn_int;
    assign s_reset = BTNC;
@@ -79,21 +82,21 @@ module OTTER_Wrapper(
                    .IOBUS_ADDR(IOBUS_addr),.IOBUS_WR(IOBUS_wr));
 
    // Declare Seven Segment Display /////////////////////////////////////////
-   SevSegDisp SSG_DISP (.DATA_IN(r_SSEG), .CLK(CLK), .MODE(1'b0),
+   SevSegDisp SSG_DISP (.DATA_IN(r_SSEG), .CLK(CLK), .MODE(1'b1),
                        .CATHODES(CATHODES), .ANODES(ANODES));
    
       
    // Declare Debouncer One Shot  ///////////////////////////////////////////
-   Debouncer DB0(.CLK_50(sclk), .RST(s_reset), .BTN(BTNL), .OneShot(sBTNL));
+   Debouncer DB0(.CLK_50(sclk), .RST(s_reset), .BTN(BTNL), .DB_LEVEL(dbBTNL), .OneShot(sBTNL));
    
    // Declare Debouncer One Shot  ///////////////////////////////////////////
-   Debouncer DB1(.CLK_50(sclk), .RST(s_reset), .BTN(BTNR), .OneShot(sBTNR));
+   Debouncer DB1(.CLK_50(sclk), .RST(s_reset), .BTN(BTNR), .DB_LEVEL(dbBTNR), .OneShot(sBTNR));
    
    // Declare Debouncer One Shot  ///////////////////////////////////////////
-   Debouncer DB2(.CLK_50(sclk), .RST(s_reset), .BTN(BTNU), .OneShot(sBTNU));
+   Debouncer DB2(.CLK_50(sclk), .RST(s_reset), .BTN(BTNU), .DB_LEVEL(dbBTNU), .OneShot(sBTNU));
    
    // Declare Debouncer One Shot  ///////////////////////////////////////////
-   Debouncer DB3(.CLK_50(sclk), .RST(s_reset), .BTN(BTND), .OneShot(sBTND));
+   Debouncer DB3(.CLK_50(sclk), .RST(s_reset), .BTN(BTND), .DB_LEVEL(dbBTND), .OneShot(sBTND));
    
    // Declare VGA Frame Buffer //////////////////////////////////////////////
    vga_fb_driver_80x60 VGA(.CLK_50MHz(sclk), .WA(r_vga_wa), .WD(r_vga_wd),
@@ -124,10 +127,10 @@ module OTTER_Wrapper(
     always_comb begin
         case(IOBUS_addr)
             SWITCHES_AD: IOBUS_in = {16'b0, SWITCHES};
-            BTNL_AD: IOBUS_in = {31'b0, sBTNL};
-            BTNR_AD: IOBUS_in = {31'b0, sBTNR};
-            BTNU_AD: IOBUS_in = {31'b0, sBTNU};
-            BTND_AD: IOBUS_in = {31'b0, sBTND};
+            BTNL_AD: IOBUS_in = {31'b0, dbBTNL};
+            BTNR_AD: IOBUS_in = {31'b0, dbBTNR};
+            BTNU_AD: IOBUS_in = {31'b0, dbBTNU};
+            BTND_AD: IOBUS_in = {31'b0, dbBTND};
             VGA_READ_AD: IOBUS_in = {24'b0, r_vga_rd};
             default: IOBUS_in = 32'b0;
         endcase

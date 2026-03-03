@@ -28,7 +28,7 @@ module Debouncer(
     input CLK_50,
     input RST,
     input BTN,
-    //output DB_BTN,
+    output logic DB_LEVEL,
     output OneShot
     );
     
@@ -66,6 +66,11 @@ module Debouncer(
        db_dff_1 <= BTN;
        db_dff_2 <= db_dff_1;
     end
+    
+    always_ff @(posedge CLK_50) begin
+        if (RST) DB_LEVEL <= 1'b0;
+        else     DB_LEVEL <= db_dff_2;   // synchronize debounced level into 50 MHz domain
+    end 
     
     // create oneshot trigger from debounce registers at 800 Hz clock (1.25 ms)
     assign db_onepulse = db_dff_1 & ~db_dff_2;
