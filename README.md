@@ -30,15 +30,10 @@ It is best to run this project on WSL or Linux in order to run RISC-V toolchain.
 
 # How to Setup Vivado Project
 1. Create your RTL project at the base repo
-![project_create](imgs/vivado_tutorial/1_project_create.png)
 2. Select RTL project
-![rtl_select](imgs/vivado_tutorial/2_rtl_select.png)
 3. Add sources from /rtl
-![add_source](imgs/vivado_tutorial/3_add_sources.png)
 Add all of the System Verilog, Verilog, and memory files
-![rtl_sources](imgs/vivado_tutorial/4_rtl_sources.png)
 4. Add constraints file (peripherals already setup. Do not modify)
-![constraints_select](imgs/vivado_tutorial/5_constraints_select.png)
 5. Select correct FPGA board (xc7a35ticpg)
 ![board_select](imgs/vivado_tutorial/6_board_select.png)
 6. Once project is generated, add the sim file from the /sim folder
@@ -49,17 +44,24 @@ Add all of the System Verilog, Verilog, and memory files
 Once your Vivado project is setup, you can proceed to simulate, synthesize, and generate bit stream. 
 
 # How to Setup RISC-V ToolChain
-1. Download dependecies
+
+After cloning the project on your Linux or WSL machine, follow the directions to setup the toolchai. 
+1. Install the otter toolchain from this google driver and put it in the root directory of this project:
+    https://drive.google.com/file/d/1yS3x0SlOr-eLZniw07J5MWeR3lJSSB8F/view?usp=sharing
+
+    This includes the compiler required to run this project. 
+2. untar: `tar -xzf otter_tools_wsl.tgz`
+3. Download dependecies
     - `sudo apt update`
-    - `apt install -y libmpc3 libmpfr6 libgmp10 make`
-2. Setup script for project
+    - `sudo apt install -y libmpc3 libmpfr6 libgmp10 make`
+4. Setup script for project
     - `cd programs`
     - `source scripts/env.sh`
-2. Build the snake game
+5. Build the snake game
     - `cd programs/snake_game`
     - `make clean`
     - `make`
-4. The snake game should already be in the RTL .mem file. If not, copy and paste contents from programs/snake_game/build/mem.txt to the .mem file on the RTL project. Generated the bit stream again and load on to the board. 
-5. (Optional) If you want create your own software projects run (not necessary for this trojan) `create_project_asm myproj`
+6. The snake game should already be in the RTL .mem file. If not, copy and paste contents from programs/snake_game/build/mem.txt to the .mem file on the RTL project. Generated the bit stream again and load on to the board. 
+7. (Optional) If you want create your own software projects run (not necessary for this trojan) `create_project_asm myproj`
     - Or a C project, run `create_project_c myproj`
     - Be sure to change src/init.s to call _start instead of main for a C project

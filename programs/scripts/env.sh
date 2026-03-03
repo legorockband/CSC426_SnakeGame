@@ -1,9 +1,8 @@
-#!/usr/bin/env bash
 # programs/scripts/env.sh
 
-REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+export OTTER_TOOLS="$HOME/otter_tools"
 
-export OTTER_TOOLS="$REPO_ROOT"
-export PATH="$REPO_ROOT/programs/riscv_gnu_toolchain/bin:$REPO_ROOT/programmer/bin:$REPO_ROOT/scripts:$PATH"
+export PATH="$OTTER_TOOLS/riscv_gnu_toolchain/bin:$OTTER_TOOLS/programmer/bin:$OTTER_TOOLS/scripts:$PATH"
 
+hash -r
 umask 022
