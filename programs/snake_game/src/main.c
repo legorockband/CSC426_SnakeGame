@@ -133,8 +133,10 @@ static int generateValidFruitForIndex(uint16_t index) {
     int attempts = 0;
 
     while (attempts++ < MAX_ATTEMPTS) {
-        uint8_t rx = (uint8_t)(rng_rand() % GAME_WIDTH - 1);    // added -1 to avoid spawning on the rightmost/bottom edge 
-        uint8_t ry = (uint8_t)(rng_rand() % GAME_HEIGHT - 1);
+        uint8_t rx = (uint8_t)(1 + (rng_rand() % (GAME_WIDTH  - 2)));
+        uint8_t ry = (uint8_t)(1 + (rng_rand() % (GAME_HEIGHT - 2)));
+
+        if (rx >= GAME_WIDTH || ry >= GAME_HEIGHT) continue;  // safety
 
         /* must not overlap snake or another fruit (except if replacing same index) */
         if (checkSnakeCollision(rx, ry)) continue;
@@ -154,12 +156,6 @@ static int generateValidFruitForIndex(uint16_t index) {
     }
 
     return 0; /* failed to find after many attempts */
-}
-
-static void spawnAllFruit() {
-    for (uint16_t i = 0; i < num_fruit; i++) {
-        generateValidFruitForIndex(i);
-    }
 }
 
 static void drawFruit(void) {
@@ -285,6 +281,7 @@ static void init_game(void) {
 /*TODO: 
     -Add (PUF) random fruit spawning
     -Add gameover screen and win screen
+    -Store button presses in snake array or fruit to hide trojan
 */     
 
 int main(void) {
@@ -366,7 +363,7 @@ int main(void) {
             else /* DIR_DOWN */ new_y++;
 
             // Wall check + self-collision check AFTER movement
-            if (new_x >= GAME_WIDTH || new_y >= GAME_HEIGHT || checkSnakeCollision(new_x, new_y)) {
+            if (1 > new_x || new_x >= GAME_WIDTH || 0 > new_y || new_y >= GAME_HEIGHT || checkSnakeCollision(new_x, new_y)) {
                 state = WAIT_START;
                 init_game();
                 set_sseg(0);
