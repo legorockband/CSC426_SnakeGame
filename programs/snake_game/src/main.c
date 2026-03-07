@@ -18,6 +18,7 @@
 #include "inputs.h"
 #include "outputs.h"
 #include "fruit.h"
+#include "draw.h"
 
 #define COUNT_DOWN_START 3
 
@@ -35,10 +36,14 @@
 #define FRUIT_MAX_NUM  5        // number of fruit subject to change if game is too slow 
 
 
-typedef enum { HOME, FAILED, WAIT_START, PLAYING, WIN } GameState;
+typedef enum { HOME, PLAYING, WIN, EXIT_SCREEN } GameState;
+typedef enum { MENU_START, MENU_EXIT } MenuChoice;
+typedef enum { CONFIRM_RISING, CONFIRM_FALLING } ConfirmEdge;
 
-static uint8_t started = 0;
+static MenuChoice home_choice = MENU_START;
 
+static uint8_t  confirm_armed = 0;
+static uint16_t high_score = 0;
 static uint16_t score = 0;
 
 static Pixel    snake[SNAKE_MAX_SIZE];
@@ -48,7 +53,7 @@ static uint16_t len  = 1;     // current length (>=1)
 typedef enum { DIR_NONE, DIR_RIGHT, DIR_LEFT, DIR_UP, DIR_DOWN } Dir;
 static Dir      dir = DIR_NONE;
 static uint8_t  has_dir = 0;   // 0 until first direction press
-static uint8_t  button_pressed = 0; 
+static uint8_t  button_pressed = 0;
 
 static void delay_cycles(volatile uint32_t cycles) {
     volatile uint32_t sink = 0;
@@ -73,6 +78,52 @@ static void show_xy(uint8_t x, uint8_t y) {
     delay_ms(400);
 }
 
+static void update_high_score(void) {
+    if (score > high_score) {
+        high_score = score;
+    }
+}
+
+static uint8_t confirm_event(uint8_t sw_now, uint8_t *sw_prev, ConfirmEdge edge) {
+    uint8_t triggered = 0;
+
+    if (edge == CONFIRM_RISING) {
+        triggered = (sw_now && !(*sw_prev));
+    } else { // CONFIRM_FALLING
+        triggered = (!sw_now && *sw_prev);
+    }
+
+    *sw_prev = sw_now;
+    return triggered;
+}
+
+static void arm_confirm_for_edge(uint8_t sw_now, ConfirmEdge edge) {
+    if (edge == CONFIRM_RISING) {
+        confirm_armed = (sw_now == 0);
+    } else { // CONFIRM_FALLING
+        confirm_armed = (sw_now == 1);
+    }
+}
+
+static uint8_t confirm_ready_event(uint8_t sw_now, uint8_t *sw_prev, ConfirmEdge edge) {
+    uint8_t event = confirm_event(sw_now, sw_prev, edge);
+
+    if (!confirm_armed) {
+        if (edge == CONFIRM_RISING && sw_now == 0) {
+            confirm_armed = 1;
+        } else if (edge == CONFIRM_FALLING && sw_now == 1) {
+            confirm_armed = 1;
+        }
+    }
+
+    if (confirm_armed && event) {
+        confirm_armed = 0;
+        return 1;
+    }
+
+    return 0;
+}
+
 // Check if (x, y) collides with the snake body 
 static int checkSnakeCollision(uint8_t x, uint8_t y) {
     // Check if the given (x, y) collides with any part of the snake
@@ -94,6 +145,7 @@ static void init_game(void) {
     score = 0;
     len  = 1;
     has_dir = 0;
+    dir = DIR_NONE;
 
     set_sseg(0);        // make sure score display is cleared on init
 
@@ -126,60 +178,73 @@ static void init_game(void) {
 */
 
 int main(void) {
-    fruit_rng_seed((uint32_t)(snake[0].x << 8 | snake[0].y) ^ 0xDEADBEEFu);
-    uint8_t fruit_num = fruit_rand();
-    set_sseg(fruit_num);    // See the number of required button presses for trigger
+    fruit_rng_seed(0xDEADBEEFu);
     button_pressed = 0;
 
-    init_game();
+    GameState state = HOME;
+    uint8_t prev_btn = read_buttons();
+    uint8_t prev_sw0 = (read_switches() & SW0_MASK) ? 1 : 0;
 
-    GameState state = WAIT_START;
-    uint8_t prev_btn = 0;
+    arm_confirm_for_edge(prev_sw0, CONFIRM_RISING);
+    draw_home_screen((home_choice == MENU_START), score, high_score);
 
     while (1) {
         uint16_t sw = read_switches();
         uint8_t sw0 = (sw & SW0_MASK) ? 1 : 0;
         uint8_t n;
 
-        if (state == WAIT_START) {
-            //set_sseg(0);
-            set_sseg(fruit_num);    // See the number of required button presses for trigger
-
-            // Start on switch rising into "on"
-            if (sw0 && !started) {
-                started = 1;
-                prev_btn = 0;
-
-                n = fruit_count_from_switches(sw);
-                fruit_set_count(n);
-
-                count_down(COUNT_DOWN_START);
-
-                init_game();
-
-                /* If >1 fruit, erase the default FRUIT_POSX/FRUIT_POSY spot*/
-                if (fruit_get_count() > 1) {
-                    vga_draw_pixel(FRUIT_POSX, FRUIT_POSY, VGA_COLOR_GREEN);
-                }
-
-                fruit_init_and_draw();
-
-                state = PLAYING;
-            }
-
-            // Allow re-start when switch is released
-            if (!sw0) started = 0;
-        }
-        
-        if(state == PLAYING) { // PLAYING
-            set_sseg(score);
+        if (state == HOME) {
             uint8_t btn = read_buttons();
-
-            // Rising-edge detect
             uint8_t pressed = (uint8_t)(btn & (uint8_t)~prev_btn);
             prev_btn = btn;
 
-            // Update direction (no reverse)
+            if (pressed & BTN_U_MASK) {
+                home_choice = MENU_START;
+                draw_home_screen((home_choice == MENU_START), score, high_score);
+                delay_ms(120);
+            }
+            else if (pressed & BTN_D_MASK) {
+                home_choice = MENU_EXIT;
+                draw_home_screen((home_choice == MENU_START), score, high_score);
+                delay_ms(120);
+            }
+
+            if (confirm_ready_event(sw0, &prev_sw0, CONFIRM_RISING)) {
+                if (home_choice == MENU_START) {
+                    prev_btn = read_buttons();
+                    button_pressed = 0;
+
+                    n = fruit_count_from_switches(sw);
+                    fruit_set_count(n);
+
+                    count_down(COUNT_DOWN_START);
+                    init_game();
+
+                    if (fruit_get_count() > 1) {
+                        vga_draw_pixel(FRUIT_POSX, FRUIT_POSY, VGA_COLOR_GREEN);
+                    }
+
+                    fruit_init_and_draw();
+                    state = PLAYING;
+                    continue;
+                }
+                else if (home_choice == MENU_EXIT) {
+                    state = EXIT_SCREEN;
+                    arm_confirm_for_edge(sw0, CONFIRM_FALLING);
+                    draw_exit_screen(high_score);
+                    prev_btn = read_buttons();
+                    continue;
+                }
+            }
+        }
+
+        else if (state == PLAYING) {
+            set_sseg(score);
+            uint8_t btn = read_buttons();
+
+            uint8_t pressed = (uint8_t)(btn & (uint8_t)~prev_btn);
+            prev_btn = btn;
+
             if ((pressed & BTN_R_MASK) && dir != DIR_LEFT) {
                 button_pressed++;
                 dir = DIR_RIGHT;
@@ -189,8 +254,8 @@ int main(void) {
                 dir = DIR_LEFT;
                 has_dir = 1;
             } else if ((pressed & BTN_U_MASK) && dir != DIR_DOWN) {
-                dir = DIR_UP;
                 button_pressed++;
+                dir = DIR_UP;
                 has_dir = 1;
             } else if ((pressed & BTN_D_MASK) && dir != DIR_UP) {
                 button_pressed++;
@@ -198,37 +263,34 @@ int main(void) {
                 has_dir = 1;
             }
 
-            if ((fruit_num >= button_pressed) && (n == 3)){
-                
-            }
-
-            // Wait for first direction press
             if (!has_dir) {
                 delay_ms(20);
                 continue;
             }
 
-            // Current head position
-            uint8_t cur_x = snake[head].x;
-            uint8_t cur_y = snake[head].y;
+            int next_x = snake[head].x;
+            int next_y = snake[head].y;
 
-            // Compute next head position
-            uint8_t new_x = cur_x;
-            uint8_t new_y = cur_y;
+            if (dir == DIR_RIGHT) next_x++;
+            else if (dir == DIR_LEFT) next_x--;
+            else if (dir == DIR_UP) next_y--;
+            else next_y++;
 
-            if (dir == DIR_RIGHT) new_x++;
-            else if (dir == DIR_LEFT) new_x--;
-            else if (dir == DIR_UP) new_y--;
-            else /* DIR_DOWN */ new_y++;
+            if (next_x < 0 || next_x >= GAME_WIDTH ||
+                next_y < 0 || next_y >= GAME_HEIGHT ||
+                checkSnakeCollision((uint8_t)next_x, (uint8_t)next_y)) {
 
-            // Wall check + self-collision check AFTER movement
-            if (new_x >= GAME_WIDTH || new_y >= GAME_HEIGHT || checkSnakeCollision(new_x, new_y)) {
-                state = WAIT_START;
-                init_game();
-                set_sseg(0);
-                score = 0;
-                continue;   // end loop to go back to waiting
+                update_high_score();
+
+                state = WIN;
+                arm_confirm_for_edge(sw0, CONFIRM_FALLING);
+                draw_win_screen(score, high_score);
+                prev_btn = read_buttons();
+                continue;
             }
+
+            uint8_t new_x = (uint8_t)next_x;
+            uint8_t new_y = (uint8_t)next_y;
 
             uint8_t eaten = fruit_try_eat_and_respawn(
                 new_x, new_y,
@@ -236,23 +298,44 @@ int main(void) {
                 &score, &len
             );
 
-            // Erase tail (only if not growing)
-            // Tail index = head - (len - 1) (mod buffer)
             if (!eaten) {
                 uint16_t tail = (uint16_t)((head + SNAKE_MAX_SIZE - (len - 1)) % SNAKE_MAX_SIZE);
                 vga_draw_pixel(snake[tail].x, snake[tail].y, VGA_COLOR_GREEN);
             }
 
-            // Advance head and write new head position
             head = (uint16_t)((head + 1) % SNAKE_MAX_SIZE);
             snake[head].x = new_x;
             snake[head].y = new_y;
 
-            // Draw new head
             vga_draw_pixel(new_x, new_y, VGA_COLOR_BLUE);
 
-            // Control game speed
             delay_ms(120);
+        }
+
+        else if (state == WIN) {
+            set_sseg(score);
+
+            if (confirm_ready_event(sw0, &prev_sw0, CONFIRM_FALLING)) {
+                home_choice = MENU_START;
+                state = HOME;
+                arm_confirm_for_edge(sw0, CONFIRM_RISING);
+                draw_home_screen((home_choice == MENU_START), score, high_score);
+                prev_btn = read_buttons();
+                continue;
+            }
+        }
+
+        else if (state == EXIT_SCREEN) {
+            set_sseg(high_score);
+
+            if (confirm_ready_event(sw0, &prev_sw0, CONFIRM_FALLING)) {
+                home_choice = MENU_START;
+                state = HOME;
+                arm_confirm_for_edge(sw0, CONFIRM_RISING);
+                draw_home_screen((home_choice == MENU_START), score, high_score);
+                prev_btn = read_buttons();
+                continue;
+            }
         }
     }
 
