@@ -27,6 +27,11 @@
 #define BTN_U_MASK 0x02u
 #define BTN_D_MASK 0x01u
 
+typedef struct {
+    uint8_t x;
+    uint8_t y;
+} Pixel;
+
 // Optional helper function prototypes
 uint16_t read_switches(void);
 uint8_t  read_btn_l(void);

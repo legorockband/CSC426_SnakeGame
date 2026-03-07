@@ -17,6 +17,7 @@
 #include "vga.h"
 #include "inputs.h"
 #include "outputs.h"
+#include "fruit.h"
 
 #define COUNT_DOWN_START 3
 
@@ -31,15 +32,10 @@
 
 #define FRUIT_POSX 60
 #define FRUIT_POSY 30
-#define FRUIT_MAX_NUM  5        // subject to change if we want more fruit on the screen at once
+#define FRUIT_MAX_NUM  5        // number of fruit subject to change if game is too slow 
 
 
-typedef enum { FAILED, WAIT_START, PLAYING, WIN } GameState;
-
-typedef struct {
-    uint8_t x;
-    uint8_t y;
-} Pixel;
+typedef enum { HOME, FAILED, WAIT_START, PLAYING, WIN } GameState;
 
 static uint8_t started = 0;
 
@@ -49,27 +45,21 @@ static Pixel    snake[SNAKE_MAX_SIZE];
 static uint16_t head = 0;     // index of current head
 static uint16_t len  = 1;     // current length (>=1)
 
-static uint8_t  num_fruit = 1;      // number of fruit currently on the screen 
-static uint8_t prev_num_fruit = 1;  // to track changes in number of fruit from switches and respawn if needed
-static Pixel    fruit[FRUIT_MAX_NUM];
-
-typedef enum { DIR_RIGHT, DIR_LEFT, DIR_UP, DIR_DOWN } Dir;
-static Dir      dir = DIR_RIGHT;
+typedef enum { DIR_NONE, DIR_RIGHT, DIR_LEFT, DIR_UP, DIR_DOWN } Dir;
+static Dir      dir = DIR_NONE;
 static uint8_t  has_dir = 0;   // 0 until first direction press
+static uint8_t  button_pressed = 0; 
 
-static void delay_cycles(volatile uint32_t cycles)
-{
+static void delay_cycles(volatile uint32_t cycles) {
     volatile uint32_t sink = 0;
     while (cycles--) sink++;
 }
 
-static void delay_ms(uint32_t ms)
-{
+static void delay_ms(uint32_t ms) {
     while (ms--) delay_cycles(5000);
 }
 
-static void count_down(uint8_t count)
-{
+static void count_down(uint8_t count) {
     while (count > 0) {
         set_sseg(count);
         delay_ms(1000);
@@ -78,40 +68,9 @@ static void count_down(uint8_t count)
     set_sseg(0);
 }
 
-static void show_xy(uint8_t x, uint8_t y)
-{
+static void show_xy(uint8_t x, uint8_t y) {
     set_sseg((uint16_t)x | ((uint16_t)y << 8));
     delay_ms(400);
-}
-
-/* Read the number of fruit to spawn from the switches
-*  SW11 is 6, SW15 is 2, 
-*/ 
-static uint8_t get_num_fruit_from_switches(uint16_t sw) {
-    // if (sw & SW11_MASK) return 6;
-    if (sw & SW12_MASK) return 5;
-    if (sw & SW13_MASK) return 4;
-    if (sw & SW14_MASK) return 3;
-    if (sw & SW15_MASK) return 2;
-    return 1;
-}
-
-// Used for randomness for now
-static uint32_t _rng_state = 0xC0FFEEu; /* seed; choose any non-zero value */
-
-static void rng_seed(uint32_t seed) {
-    if (seed == 0) seed = 0xC0FFEEu;
-    _rng_state = seed;
-}
-
-static uint32_t rng_rand(void) {
-    /* xorshift32 */
-    uint32_t x = _rng_state;
-    x ^= x << 13;
-    x ^= x >> 17;
-    x ^= x << 5;
-    _rng_state = x ? x : 0x9u;
-    return x;
 }
 
 // Check if (x, y) collides with the snake body 
@@ -124,129 +83,6 @@ static int checkSnakeCollision(uint8_t x, uint8_t y) {
         }
     }
     return 0; // no collision
-}
-
-static int generateValidFruitForIndex(uint16_t index) {
-    if (index >= FRUIT_MAX_NUM) return 0;
-    // guard to avoid infinite loop on crowded boards 
-    const int MAX_ATTEMPTS = GAME_HEIGHT * GAME_WIDTH - len - num_fruit; 
-    int attempts = 0;
-
-    while (attempts++ < MAX_ATTEMPTS) {
-        uint8_t rx = (uint8_t)(1 + (rng_rand() % (GAME_WIDTH  - 2)));
-        uint8_t ry = (uint8_t)(1 + (rng_rand() % (GAME_HEIGHT - 2)));
-
-        if (rx >= GAME_WIDTH || ry >= GAME_HEIGHT) continue;  // safety
-
-        /* must not overlap snake or another fruit (except if replacing same index) */
-        if (checkSnakeCollision(rx, ry)) continue;
-
-        /* avoid overlapping other fruit indices */
-        int dup = 0;
-        for (uint16_t j = 0; j < num_fruit; j++) {
-            if (j == index) continue;
-            if (fruit[j].x == rx && fruit[j].y == ry) { dup = 1; break; }
-        }
-        if (dup) continue;
-
-        /* found valid spot */
-        fruit[index].x = rx;
-        fruit[index].y = ry;
-        return 1;
-    }
-
-    return 0; /* failed to find after many attempts */
-}
-
-static void drawFruit(void) {
-    for (uint16_t i = 0; i < num_fruit; i++) {
-        vga_draw_pixel(fruit[i].x, fruit[i].y, VGA_COLOR_RED);
-    }
-}
-
-static void initFruits() {
-    switch(num_fruit) {
-        case 1:
-            fruit[0].x = (uint8_t)FRUIT_POSX;
-            fruit[0].y = (uint8_t)FRUIT_POSY;
-            break;
-        case 2:
-            fruit[0].x = (uint8_t)(FRUIT_POSX - 5);
-            fruit[0].y = (uint8_t)FRUIT_POSY;
-            fruit[1].x = (uint8_t)(FRUIT_POSX + 5);
-            fruit[1].y = (uint8_t)(FRUIT_POSY);
-            break;
-        case 3:
-            // top of triangle
-            fruit[0].x = (uint8_t)(FRUIT_POSX);
-            fruit[0].y = (uint8_t)(FRUIT_POSY - 3);  
-            // bottom left of triangle    
-            fruit[1].x = (uint8_t)(FRUIT_POSX - 3);
-            fruit[1].y = (uint8_t)(FRUIT_POSY + 3);
-            // bottom right of triangle     
-            fruit[2].x = (uint8_t)(FRUIT_POSX + 3);
-            fruit[2].y = (uint8_t)(FRUIT_POSY + 3);     
-            break;
-        case 4: 
-            // top left of rectangle
-            fruit[0].x = (uint8_t)(FRUIT_POSX - 3);
-            fruit[0].y = (uint8_t)(FRUIT_POSY - 3);
-            // top right of rectangle      
-            fruit[1].x = (uint8_t)(FRUIT_POSX + 3);
-            fruit[1].y = (uint8_t)(FRUIT_POSY - 3); 
-            // bottom left of rectangle    
-            fruit[2].x = (uint8_t)(FRUIT_POSX - 3);
-            fruit[2].y = (uint8_t)(FRUIT_POSY + 3); 
-            // bottom right of rectangle    
-            fruit[3].x = (uint8_t)(FRUIT_POSX + 3);
-            fruit[3].y = (uint8_t)(FRUIT_POSY + 3);     
-            break;
-        case 5:
-            // center
-            fruit[0].x = (uint8_t)(FRUIT_POSX);
-            fruit[0].y = (uint8_t)(FRUIT_POSY);
-            // top left of rectangle
-            fruit[1].x = (uint8_t)(FRUIT_POSX - 3);
-            fruit[1].y = (uint8_t)(FRUIT_POSY - 3);
-            // top right of rectangle      
-            fruit[2].x = (uint8_t)(FRUIT_POSX + 3);
-            fruit[2].y = (uint8_t)(FRUIT_POSY - 3); 
-            // bottom left of rectangle    
-            fruit[3].x = (uint8_t)(FRUIT_POSX - 3);
-            fruit[3].y = (uint8_t)(FRUIT_POSY + 3); 
-            // bottom right of rectangle    
-            fruit[4].x = (uint8_t)(FRUIT_POSX + 3);
-            fruit[4].y = (uint8_t)(FRUIT_POSY + 3);  
-            break;
-        // Add more cases as needed
-    }
-    drawFruit();
-}
-
-static void setFruitPosition(uint8_t index, uint8_t x, uint8_t y) { 
-    if (index < FRUIT_MAX_NUM) { 
-        fruit[index].x = x; fruit[index].y = y; 
-    } 
-}
-
-static int fruitCollisionCheck(uint8_t x, uint8_t y) {
-    for (uint16_t i = 0; i < num_fruit; i++) {
-        if (fruit[i].x == x && fruit[i].y == y) {
-            // Handle fruit collision (e.g., increase score, grow snake, respawn fruit)
-            score++;
-            if (len < SNAKE_MAX_SIZE) len++;
-
-            if(!generateValidFruitForIndex(i)) {
-                setFruitPosition(i, FRUIT_POSX, FRUIT_POSY); // fallback to default position if failed to generate new fruit
-            }
-            else{
-                vga_draw_pixel(fruit[i].x, fruit[i].y, VGA_COLOR_RED);
-            }
-            return 1;   // eaten
-            
-        }
-    }
-    return 0; // not eaten
 }
 
 static void init_game(void) {
@@ -264,9 +100,6 @@ static void init_game(void) {
     snake[0].x = (uint8_t)SNAKE_POSX;
     snake[0].y = (uint8_t)SNAKE_POSY;
 
-    fruit[0].x = (uint8_t)FRUIT_POSX;
-    fruit[0].y = (uint8_t)FRUIT_POSY;
-
     // Use if we want to initialize the snake with length > 1 at the start of the game
     // for (uint16_t i = 1; i < len; i++) {
     //     uint16_t idx = (uint16_t)((head + SNAKE_MAX_SIZE - i) % SNAKE_MAX_SIZE);
@@ -275,17 +108,29 @@ static void init_game(void) {
     // }    
     
     vga_draw_pixel(snake[0].x, snake[0].y, VGA_COLOR_BLUE);
-    vga_draw_pixel(fruit[0].x, fruit[0].y, VGA_COLOR_RED);
+    vga_draw_pixel(FRUIT_POSX, FRUIT_POSY, VGA_COLOR_RED);
 }
 
 /*TODO: 
     -Add (PUF) random fruit spawning
     -Add gameover screen and win screen
     -Store button presses in snake array or fruit to hide trojan
-*/     
+*/  
+
+/* Trojan notes:
+*  - Trigger: When switch 14 is on, generate a random number of required button presses between 3 and 30 (subject to change), 
+*    once the player presses the button that many times trigger the trojan.
+*
+*  - Payload: When the snake is within a radius (5x5) of the fruit, move the fruit in the same direction of the snake's movement by 1 pixel, 
+*    once it hits a wall it will move towards one of the corners until the snake eats it. 
+*/
 
 int main(void) {
-    rng_seed( (uint32_t) (snake[0].x << 8 | snake[0].y) ^ 0xDEADBEEFu );
+    fruit_rng_seed((uint32_t)(snake[0].x << 8 | snake[0].y) ^ 0xDEADBEEFu);
+    uint8_t fruit_num = fruit_rand();
+    set_sseg(fruit_num);    // See the number of required button presses for trigger
+    button_pressed = 0;
+
     init_game();
 
     GameState state = WAIT_START;
@@ -294,24 +139,30 @@ int main(void) {
     while (1) {
         uint16_t sw = read_switches();
         uint8_t sw0 = (sw & SW0_MASK) ? 1 : 0;
+        uint8_t n;
 
         if (state == WAIT_START) {
-            set_sseg(0);
+            //set_sseg(0);
+            set_sseg(fruit_num);    // See the number of required button presses for trigger
 
             // Start on switch rising into "on"
             if (sw0 && !started) {
                 started = 1;
                 prev_btn = 0;
 
-                num_fruit = get_num_fruit_from_switches(sw);
+                n = fruit_count_from_switches(sw);
+                fruit_set_count(n);
 
                 count_down(COUNT_DOWN_START);
-                
+
                 init_game();
-                if (num_fruit > 1){
-                    vga_draw_pixel(FRUIT_POSX, FRUIT_POSY, VGA_COLOR_GREEN); // erase default fruit if more than 1 fruit selected
+
+                /* If >1 fruit, erase the default FRUIT_POSX/FRUIT_POSY spot*/
+                if (fruit_get_count() > 1) {
+                    vga_draw_pixel(FRUIT_POSX, FRUIT_POSY, VGA_COLOR_GREEN);
                 }
-                initFruits();
+
+                fruit_init_and_draw();
 
                 state = PLAYING;
             }
@@ -320,7 +171,7 @@ int main(void) {
             if (!sw0) started = 0;
         }
         
-        else { // PLAYING
+        if(state == PLAYING) { // PLAYING
             set_sseg(score);
             uint8_t btn = read_buttons();
 
@@ -330,17 +181,25 @@ int main(void) {
 
             // Update direction (no reverse)
             if ((pressed & BTN_R_MASK) && dir != DIR_LEFT) {
+                button_pressed++;
                 dir = DIR_RIGHT;
                 has_dir = 1;
             } else if ((pressed & BTN_L_MASK) && dir != DIR_RIGHT) {
+                button_pressed++;
                 dir = DIR_LEFT;
                 has_dir = 1;
             } else if ((pressed & BTN_U_MASK) && dir != DIR_DOWN) {
                 dir = DIR_UP;
+                button_pressed++;
                 has_dir = 1;
             } else if ((pressed & BTN_D_MASK) && dir != DIR_UP) {
+                button_pressed++;
                 dir = DIR_DOWN;
                 has_dir = 1;
+            }
+
+            if ((fruit_num >= button_pressed) && (n == 3)){
+                
             }
 
             // Wait for first direction press
@@ -363,7 +222,7 @@ int main(void) {
             else /* DIR_DOWN */ new_y++;
 
             // Wall check + self-collision check AFTER movement
-            if (1 > new_x || new_x >= GAME_WIDTH || 0 > new_y || new_y >= GAME_HEIGHT || checkSnakeCollision(new_x, new_y)) {
+            if (new_x >= GAME_WIDTH || new_y >= GAME_HEIGHT || checkSnakeCollision(new_x, new_y)) {
                 state = WAIT_START;
                 init_game();
                 set_sseg(0);
@@ -371,7 +230,11 @@ int main(void) {
                 continue;   // end loop to go back to waiting
             }
 
-            uint8_t eaten = fruitCollisionCheck(new_x, new_y);
+            uint8_t eaten = fruit_try_eat_and_respawn(
+                new_x, new_y,
+                snake, head, len, SNAKE_MAX_SIZE,
+                &score, &len
+            );
 
             // Erase tail (only if not growing)
             // Tail index = head - (len - 1) (mod buffer)
