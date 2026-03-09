@@ -22,11 +22,34 @@ This project is an implementation of a hardware trojan only on the Basys3 FPGA b
 
 It is best to run this project on WSL or Linux in order to run RISC-V toolchain. 
 
+# Project Structure
+* `Constraints`: Constraints file for the Basys3 FPGA Board
+* `imgs`: documentation images
+* `programs`: C software for OTTER
+    * `scripts`: scripts to setup OTTER tools
+    * `snake_game`: **Location of main program for this project**. A simple snake game implementation on the OTTER
+    * Extra tar files for initializes new projects
+* `rtl`: RTL of OTTER and VGA driver
+* `sim`: Location of OTTER testbench
+
 ## Required Hardware and Software
+
+# Hardware
+* Basys3 FPGA Board
+* VGA Monitor
+* VGA Cable
+
+# Software
+* Vivado
+* RISC-V Toolchain
 
 ## Game Controls
 
-# Project Strucure
+The controls are extremely simple. 
+
+When on the main menu, you can press the up or down button to scroll between START and EXIT. To confirm an option, you need to flip the rightmost switch (switch 0) to on. There are extra game options that can be set before selecting START. Using the leftmost switches (switch 12 to switch 15), you can increase the number of fruits that appear on the screen at a time. Switch 12 means 5 fruits and switch 15 means 2. If no fruit option switch is flipped on, the game defaults to 1 fruit. This option for fruit selection must be made before you start the game. 
+
+Once the game starts, use the left, right, up, and down buttons to move the snake in the pressed direction. Once a button is pressed, the snake will continue to move in that direction until another direction is pressed. Lastly there is a middle button that acts as a full reset of the program.
 
 # How to Setup Vivado Project
 1. Create your RTL project at the base repo
